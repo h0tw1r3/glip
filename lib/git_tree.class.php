@@ -125,7 +125,7 @@ class GitTree extends GitPathObject implements ArrayAccess, IteratorAggregate, C
       {
         if ($listDirs)
         {
-          if ($node->mode == 57344) {
+          if ($node->mode == 57344)
             $r[$name . ':submodule'] = $node;
           else
             $r[$name] = $node;
