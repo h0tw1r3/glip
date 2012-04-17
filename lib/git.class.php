@@ -105,7 +105,7 @@ class Git implements ArrayAccess
    **/
   public function __construct($dir, &$stashSource = null, $stashKey = 'git_stash')
   {
-    $this->dir = $dir;
+    $this->dir = realpath($dir);
     
     if (is_array($stashSource))
     {
@@ -119,11 +119,17 @@ class Git implements ArrayAccess
       }
     }
 
+    if ($this->dir === FALSE || !@is_dir($this->dir))
+        throw new Exception(sprintf('not a directory: %s', $dir));
+
     $this->packs = array();
     $dh = opendir(sprintf('%s/objects/pack', $this->dir));
-    while (($entry = readdir($dh)) !== FALSE)
-      if (preg_match('#^pack-([0-9a-fA-F]{40})\.idx$#', $entry, $m))
-        $this->packs[] = new SHA($m[1]);
+    if ($dh !== FALSE) {
+      while (($entry = readdir($dh)) !== FALSE)
+        if (preg_match('#^pack-([0-9a-fA-F]{40})\.idx$#', $entry, $m))
+          $this->packs[] = new SHA($m[1]);
+      closedir($dh);
+    }
   }
 
   /**
@@ -272,6 +278,7 @@ class Git implements ArrayAccess
         if ($opcode & 0x10) $len = ord($delta{$pos++});
         if ($opcode & 0x20) $len |= ord($delta{$pos++}) <<  8;
         if ($opcode & 0x40) $len |= ord($delta{$pos++}) << 16;
+        if ($len == 0) $len = 0x10000;
         $r .= substr($base, $off, $len);
       }
       else
@@ -303,7 +310,7 @@ class Git implements ArrayAccess
     for ($i = 4; $c & 0x80; $i += 7)
     {
       $c = ord(fgetc($pack));
-      $size |= ($c << $i);
+      $size |= (($c & 0x7F) << $i);
     }
 
     /* compare sha1_file.c:1608 unpack_entry */
